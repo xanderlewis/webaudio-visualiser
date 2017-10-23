@@ -11,11 +11,11 @@ function randomRainbowSquares(v) {
     const amp = v.getAmplitudeSmooth(0.15);
 
     // Calculate actual size of squares (between 0 and something pixels)
-    const actualSize = lerp(0, 400, amp);
+    const actualSize = lerp(0, 200, amp);
 
     // Calculate positions of squares if not already done
     if (squareCentres.length == 0) {
-        for (var i = 0; i < 32; i++) {
+        for (var i = 0; i < 256; i++) {
             squareCentres.push([Math.floor(Math.random()*canvasWidth), Math.floor(Math.random()*canvasHeight)]);
         }
     }
