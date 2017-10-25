@@ -3,7 +3,7 @@ const ParticleSet = require('../src/particle.js').ParticleSet;
 
 let particleSet;
 
-moudle.exports = function(v) {
+module.exports = function(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
@@ -40,7 +40,7 @@ moudle.exports = function(v) {
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw flash
-    ctx.fillStyle = `rgba(255,150,0,${maths.polyInterpolate(0, 1, amp, 4)})`;
+    ctx.fillStyle = `rgba(255,150,0,${maths.polyInterpolate(0, 1, amp, 2)})`;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw particles
@@ -53,5 +53,5 @@ moudle.exports = function(v) {
     });
 
     // Update particle set
-    particleSet.tick(maths.polyInterpolate(0, 6, amp, 4));
+    particleSet.tick(maths.polyInterpolate(0, 6, amp, 3));
 }

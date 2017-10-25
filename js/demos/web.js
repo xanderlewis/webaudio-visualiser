@@ -48,7 +48,7 @@ module.exports = function(v) {
         ctx.moveTo(p[i].x, p[i].y);
         ctx.lineTo(p[i+1].x, p[i+1].y);
         ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-        ctx.lineWidth = maths.euclideanDistance(p[i].vX, p[i].vY) / 3;
+        ctx.lineWidth = maths.euclideanDistance(p[i].vX, p[i].vY) / 4;
         ctx.stroke();
     }
     

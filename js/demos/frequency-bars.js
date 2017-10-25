@@ -9,6 +9,7 @@ module.exports = function(v) {
     const canvasHeight = ctx.canvas.height;
 
     // Get each frequency's amplitude
+    v.setFFTSize(512);
     const amps = v.getFrequencies(0.15);
 
     // Draw background

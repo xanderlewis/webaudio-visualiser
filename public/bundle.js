@@ -10,6 +10,7 @@ module.exports = function(v) {
     const canvasHeight = ctx.canvas.height;
 
     // Get each frequency's amplitude
+    v.setFFTSize(512);
     const amps = v.getFrequencies(0.15);
 
     // Draw background
@@ -284,12 +285,16 @@ Visualiser.prototype.initialiseNodes = function() {
     // Create nodes
     const source = this.audioContext.createMediaElementSource(this.audioElement);
     this.analyser = this.audioContext.createAnalyser();
-    this.analyser.fftSize = 512; //2048;
+    this.analyser.fftSize = 2048; // (default fft size)
     const destination = this.audioContext.destination;
 
     // Connect nodes
     source.connect(this.analyser);
     this.analyser.connect(destination);
+};
+
+Visualiser.prototype.setFFTSize = function(size) {
+    this.analyser.fftSize = size;
 };
 
 Visualiser.prototype.getAmplitude = function() {
@@ -327,6 +332,12 @@ Visualiser.prototype.amplitudeIsAbove = function(value) {
     return this.getAmplitudeSmooth() > value;
 };
 
+/**
+ * TODO: Fix this method so that the two amplitudes being compared for the interpolation are of the same frequency band.
+ * At the moment, the method is compared the last-checked amplitude which is almost always the frequency band below the current one.
+ * This results in weird interaction between the bands which is kind of cool, but not what we want.
+ * Actually, adding a separate method to do smoothing for frequency domain data would be good.
+ */ 
 Visualiser.prototype._smoothAmplitude = function(amp, factor = 0.15) {
     const smoothAmp = maths.lerp(this._previousAmplitude, amp, factor);
     this._previousAmplitude = smoothAmp;
