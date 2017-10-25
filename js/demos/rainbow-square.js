@@ -1,4 +1,4 @@
-const lerp = require('../src/visualiser.js').helpers.lerp;
+const lerp = require('../src/maths.js').lerp;
 
 function rainbowSquare(v) {
     const ctx = v.renderingContext;

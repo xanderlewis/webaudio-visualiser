@@ -1,67 +1,36 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-const helpers = require('../src/visualiser.js').helpers;
+const maths = require('../src/maths.js');
+const ParticleSet = require('../src/particle.js').ParticleSet;
 
-function Circle(x, y, vX, vY, r) {
-    this.x = x;
-    this.y = y;
-    this.vX = vX;
-    this.vY = vY;
+let particleSet;
 
-    this.r = r;
-
-    this.move = function(amount) {
-        this.x += this.vX * amount;
-        this.y += this.vY * amount;
-    };
-
-    this.bounceX = function() {
-        this.vX *= -1;
-    };
-
-    this.bounceY = function() {
-        this.vY *= -1;
-    };
-
-    this.boost = function(boost) {
-        this.vX *= boost;
-        this.vY *= boost;
-    };
-}
-
-let circles = [];
-
-function rovingCircles(v) {
+function web(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
 
-    // Initialise circles if not already done
-    if (circles.length == 0) {
-        for (var i = 0; i < 400; i++) {
-            // Generate origin of circle
-            const x = helpers.randomIntInRange(0, canvasWidth);
-            const y = helpers.randomIntInRange(0, canvasHeight);
-
-            // Generate velocity of circle
-            const maxV = 10;
-            const vX = helpers.randomIntInRange(-maxV, maxV);
-            const vY = helpers.randomIntInRange(-maxV, maxV);
-
-            circles.push(new Circle(x, y, vX, vY, 4));
-        }
-    }
-
     // Get amplitude
     const amp = v.getAmplitudeSmooth(0.15);
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    // Set up particle set
+    if (particleSet == undefined) {
+        // Set up particle set
+        particleSet = new ParticleSet(120, {
+            minX: 0,
+            maxX: canvasWidth,
+            minY: 0,
+            maxY: canvasHeight,
+            maxV: 4,
+            xEdgeBehaviour: 'bounce',
+            yEdgeBehaviour: 'bounce'
+        });
+    }
+
+    // Draw background
     const hWidth = canvasWidth / 2;
     const hHeight = canvasHeight / 2;
-
-    // Draw gradient
-    const innerColour = '#ff145c';
-    const outerColour = '#9e0030';
+    const innerColour = '#8b9d9e' //'#ff145c';
+    const outerColour = '#6e7f80' //'#9e0030';
     var gradient = ctx.createRadialGradient(hWidth, hHeight, 0, hWidth, hHeight, hWidth);
     gradient.addColorStop(0, innerColour);
     gradient.addColorStop(1, outerColour);
@@ -69,40 +38,36 @@ function rovingCircles(v) {
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw flash
-    ctx.fillStyle = `rgba(255,255,0,${helpers.cubic(0, 1, amp)})`;
+    ctx.fillStyle = `rgba(255,0,127,${maths.polyInterpolate(0, 1, amp, 4)})`;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    // Draw circles
-    circles.forEach(function(circle) {
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    // Draw web
+    const p = particleSet.particles;
+    
+    for (var i = 1; i < p.length - 1; i++) {
         ctx.beginPath();
-        ctx.arc(circle.x, circle.y, circle.r, 0, 2 * Math.PI, false);
-        ctx.closePath();
-        ctx.fill();
-    });
+        ctx.moveTo(p[i].x, p[i].y);
+        ctx.lineTo(p[i+1].x, p[i+1].y);
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = maths.euclideanDistance(p[i].vX, p[i].vY) / 3;
+        ctx.stroke();
+    }
+    
 
-    // Update circle positions
-    circles.forEach(function(circle) {
-        circle.move(helpers.polyInterpolate(0, 6, amp, 4));
-
-        // Check if hit edge
-        if (!helpers.isInOpenRange(0, canvasWidth, circle.x)) {
-            circle.bounceX();
-        }
-        if (!helpers.isInOpenRange(0, canvasHeight, circle.y)) {
-            circle.bounceY();
-        }
-    })
+    // Update particle set
+    particleSet.tick(maths.polyInterpolate(0, 20, amp, 6));
 }
 
-module.exports = rovingCircles;
-},{"../src/visualiser.js":3}],2:[function(require,module,exports){
+module.exports = web;
+},{"../src/maths.js":3,"../src/particle.js":4}],2:[function(require,module,exports){
 const Visualiser = require('./src/visualiser.js').Visualiser;
-const renderFunction = require('./demos/roving-circles.js');
+const renderFunction = require('./demos/web.js');
 
 // Create a Visualiser instance that visualises the audio using the canvas
 const visualiser = new Visualiser('out', 'in', renderFunction);
-},{"./demos/roving-circles.js":1,"./src/visualiser.js":3}],3:[function(require,module,exports){
+},{"./demos/web.js":1,"./src/visualiser.js":5}],3:[function(require,module,exports){
+// Some useful functions for doing visualisations
+
 function lerp(a, b, t) {
     return (b - a) * t + a;
 }
@@ -115,7 +80,7 @@ function cubic(a, b, t) {
     return (b - a) * Math.pow(t, 3) + a;
 }
 
-function polyInterpolate(a, b, t, i) {
+function polyInterpolate(a, b, t, i) {  
     return (b - a) * Math.pow(t, i) + a;
 }
 
@@ -146,6 +111,10 @@ function max(a) {
     });
 }
 
+function euclideanDistance(a, b) {
+    return Math.sqrt(a^2 + b^2);
+}
+
 function randomIntInRange(a, b) {
     return Math.floor(Math.random() * (b - a + 1)) + a;
 }
@@ -157,6 +126,137 @@ function isInOpenRange(a, b, t) {
 function isInClosedRange(a, b, t) {
     return a <= t && t <= b || a >= t && t >= b;
 }
+
+module.exports = {
+    max: max,
+    mean: mean,
+    euclideanDistance: euclideanDistance,
+    lerp: lerp,
+    quad: quad,
+    cubic: cubic,
+    polyInterpolate: polyInterpolate,
+    clip: clip,
+    randomIntInRange, randomIntInRange,
+    isInOpenRange, isInOpenRange,
+    isInClosedRange, isInClosedRange
+};
+},{}],4:[function(require,module,exports){
+const maths = require('./maths.js');
+
+function Particle(x, y, vX, vY, minX, maxX, minY, maxY, xEdgeBehaviour, yEdgeBehaviour) {
+    // Position
+    this.x = x;
+    this.y = y;
+
+    // Velocity
+    this.vX = vX;
+    this.vY = vY;
+
+    // Space
+    this.minX = minX;
+    this.maxX = maxX;
+    this.minY = minY;
+    this.maxY = maxY;
+
+    // Edge behaviour ('none' || 'bounce' || 'wrap')
+    this.xEdgeBehaviour = xEdgeBehaviour;
+    this.yEdgeBehaviour = yEdgeBehaviour;
+}
+
+Particle.prototype.move = function(factor) {
+    this.x += this.vX * factor;
+    this.y += this.vY * factor;
+};
+
+Particle.prototype.bounceX = function() {
+    this.vX *= -1;
+};
+
+Particle.prototype.bounceY = function() {
+    this.vY *= -1;
+};
+
+Particle.prototype.wrapX = function() {
+    this.x = this.maxX - this.x;
+};
+
+Particle.prototype.wrapY = function() {
+    this.y = this.maxY - this.y;
+};
+
+Particle.prototype.accelerate = function(acceleration) {
+    this.vX *= acceleration;
+    this.vY *= acceleration;
+};
+
+Particle.prototype.isInXSpace = function() {
+    return maths.isInOpenRange(this.minX, this.maxX, this.x);
+}
+
+Particle.prototype.isInYSpace = function() {
+    return maths.isInOpenRange(this.minY, this.maxY, this.y);
+}
+
+Particle.prototype.tick = function(factor) {
+    // Move
+    this.move(factor);
+
+    // Handle edge behaviour (collision detection)
+    if (!this.isInXSpace()) {
+        console.log('outside');
+        if (this.xEdgeBehaviour == 'bounce') {
+            this.bounceX();
+        } else if (this.xEdgeBehaviour == 'wrap') {
+            this.wrapX();
+        }
+    }
+    if (!this.isInYSpace()) {
+        if (this.yEdgeBehaviour == 'bounce') {
+            this.bounceY();
+        } else if (this.yEdgeBehaviour == 'wrap') {
+            this.wrapY();
+        }
+    }
+}
+
+function ParticleSet(size, options) {
+    // Create particles array
+    this.particles = spawnRandomParticles(size, options.minX, options.maxX, options.minY, options.maxY, options.maxV, options.xEdgeBehaviour, options.yEdgeBehaviour);
+}
+
+ParticleSet.prototype.tick = function(factor) {
+    this.particles.forEach(function(particle) {
+        particle.tick(factor);
+    });
+}
+
+function spawnRandomParticle(minX, maxX, minY, maxY, maxV, xEdgeBehaviour, yEdgeBehaviour) {
+    // Generate position
+    const x = maths.randomIntInRange(minX, maxX);
+    const y = maths.randomIntInRange(minY, maxY);
+
+    // Generate velocity
+    const vX = maths.randomIntInRange(-maxV, maxV);
+    const vY = maths.randomIntInRange(-maxV, maxV);
+
+    return new Particle(x, y, vX, vY, minX, maxX, minY, maxY, xEdgeBehaviour, yEdgeBehaviour);
+}
+
+function spawnRandomParticles(quantity, minX, maxX, minY, maxY, maxV, xEdgeBehaviour, yEdgeBehaviour) {
+    let particles = [];
+
+    for (let i = 0; i < quantity; i++) {
+        particles.push(spawnRandomParticle(minX, maxX, minY, maxY, maxV, xEdgeBehaviour, yEdgeBehaviour));
+    }
+
+    return particles;
+}
+
+module.exports = {
+    ParticleSet: ParticleSet
+};
+},{"./maths.js":3}],5:[function(require,module,exports){
+const maths = require('./maths.js');
 
 function Visualiser(canvasID, audioID, renderFunction) {
     this.initialiseCanvas(canvasID);
@@ -220,36 +320,57 @@ Visualiser.prototype.getAmplitude = function() {
     this.analyser.getByteTimeDomainData(data);
 
     // Calculate peak
-    const peak = max(data);
+    const peak = maths.max(data);
 
     // Scale amplitude to between 0 and 1
     const amplitude = (peak - 128) / 128;
     return amplitude;
 };
 
-Visualiser.prototype.getAmplitudeSmooth = function(factor) {
+Visualiser.prototype.getAmplitudeSmooth = function(factor = 0.15) {
     const amp = this.getAmplitude();
-    const smoothAmp = lerp(this._previousAmplitude, amp, factor);
-    this._previousAmplitude = smoothAmp;
-
+    const smoothAmp = this._smoothAmplitude(amp, factor);
     return smoothAmp;
+};
+
+Visualiser.prototype.getAmplitudeWeighted = function(weights) {
+    // Get amplitude of each frequency
+    const amps = this.getFrequenciesSmooth();
+
+    // Scale each frequency
+    const scaledAmps = amps.reduce((total, current, index) => total + current * weights[index], 1);
+
+    // Calculate peak
+    const peak = maths.max(scaledAmps);
+    return peak;
 };
 
 Visualiser.prototype.amplitudeIsAbove = function(value) {
     return this.getAmplitudeSmooth() > value;
 };
 
-module.exports = {
-    Visualiser: Visualiser,
-    helpers: {
-        lerp: lerp,
-        quad: quad,
-        cubic: cubic,
-        polyInterpolate: polyInterpolate,
-        clip: clip,
-        randomIntInRange, randomIntInRange,
-        isInOpenRange, isInOpenRange,
-        isInClosedRange, isInClosedRange
-    }
+Visualiser.prototype._smoothAmplitude = function(amp, factor = 0.15) {
+    const smoothAmp = maths.lerp(this._previousAmplitude, amp, factor);
+    this._previousAmplitude = smoothAmp;
+    return smoothAmp;
 };
-},{}]},{},[2]);
+
+Visualiser.prototype.getFrequencies = function() {
+    var data = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteFrequencyData(data);
+
+    // Scale each amplitude to between 0 and 1
+    data = data.map((amp) => (amp - 128) / 128);
+    return data;
+};
+
+Visualiser.prototype.getFrequenciesSmooth = function(factor = 0.15) {
+    var data = this.getFrequencies();
+    data.map(x => this._smoothAmplitude(x, factor));
+    return data;
+};
+
+module.exports = {
+    Visualiser: Visualiser
+};
+},{"./maths.js":3}]},{},[2]);

@@ -1,4 +1,4 @@
-const helpers = require('../src/visualiser.js').helpers;
+const maths = require('../src/maths.js');
 
 let squareCentres = [];
 
@@ -11,7 +11,7 @@ function randomRainbowSquares(v) {
     const amp = v.getAmplitudeSmooth(0.15);
 
     // Calculate actual size of squares (between 0 and something pixels)
-    const actualSize = helpers.quad(0, 600, amp);
+    const actualSize = maths.quad(0, 400, amp);
 
     // Calculate positions of squares if not already done
     if (squareCentres.length == 0) {
@@ -27,7 +27,7 @@ function randomRainbowSquares(v) {
     squareCentres.forEach(function(point) {
         const originX = point[0] - actualSize/2;
         const originY = point[1] - actualSize/2;
-        ctx.fillStyle = `hsl(${helpers.lerp(0, 360, amp)},100%,50%)`;
+        ctx.fillStyle = `hsl(${maths.lerp(0, 360, amp)},100%,50%)`;
         ctx.fillRect(originX, originY, actualSize, actualSize);
     });
 }

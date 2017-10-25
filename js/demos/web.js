@@ -3,36 +3,33 @@ const ParticleSet = require('../src/particle.js').ParticleSet;
 
 let particleSet;
 
-function rovingCircles(v) {
+function web(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
 
+    // Get amplitude
+    const amp = v.getAmplitudeSmooth(0.15);
+
     // Set up particle set
     if (particleSet == undefined) {
         // Set up particle set
-        particleSet = new ParticleSet(400, {
+        particleSet = new ParticleSet(120, {
             minX: 0,
             maxX: canvasWidth,
             minY: 0,
             maxY: canvasHeight,
-            maxV: 10,
+            maxV: 4,
             xEdgeBehaviour: 'bounce',
             yEdgeBehaviour: 'bounce'
         });
     }
 
-    // Get amplitude
-    const amp = v.getAmplitudeSmooth(0.15);
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    // Draw background
     const hWidth = canvasWidth / 2;
     const hHeight = canvasHeight / 2;
-
-    // Draw gradient
-    const innerColour = '#6e7f80' //'#ff145c';
-    const outerColour = '#4b5657' //'#9e0030';
+    const innerColour = '#8b9d9e' //'#ff145c';
+    const outerColour = '#6e7f80' //'#9e0030';
     var gradient = ctx.createRadialGradient(hWidth, hHeight, 0, hWidth, hHeight, hWidth);
     gradient.addColorStop(0, innerColour);
     gradient.addColorStop(1, outerColour);
@@ -40,20 +37,24 @@ function rovingCircles(v) {
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw flash
-    ctx.fillStyle = `rgba(255,150,0,${maths.polyInterpolate(0, 1, amp, 4)})`;
+    ctx.fillStyle = `rgba(255,0,127,${maths.polyInterpolate(0, 1, amp, 4)})`;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    // Draw particles
-    particleSet.particles.forEach(function(particle) {
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    // Draw web
+    const p = particleSet.particles;
+    
+    for (var i = 1; i < p.length - 1; i++) {
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, 4, 0, 2 * Math.PI, false);
-        ctx.closePath();
-        ctx.fill();
-    });
+        ctx.moveTo(p[i].x, p[i].y);
+        ctx.lineTo(p[i+1].x, p[i+1].y);
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = maths.euclideanDistance(p[i].vX, p[i].vY) / 3;
+        ctx.stroke();
+    }
+    
 
     // Update particle set
-    particleSet.tick(maths.polyInterpolate(0, 6, amp, 4));
+    particleSet.tick(maths.polyInterpolate(0, 20, amp, 6));
 }
 
-module.exports = rovingCircles;
+module.exports = web;

@@ -1,57 +1,4 @@
-function lerp(a, b, t) {
-    return (b - a) * t + a;
-}
-
-function quad(a, b, t) {
-    return (b - a) * Math.pow(t, 2) + a;
-}
-
-function cubic(a, b, t) {
-    return (b - a) * Math.pow(t, 3) + a;
-}
-
-function polyInterpolate(a, b, t, i) {
-    return (b - a) * Math.pow(t, i) + a;
-}
-
-function clip(a, b, t) {
-    if (a <= b) {
-        if (a + t >= b) {
-            return b;
-        } else {
-            return a + t;
-        }
-    } else {
-        if (a + t <= b) {
-            return b;
-        } else {
-            return a + t;
-        }
-    }
-    
-}
-
-function mean(a) {
-    return a.reduce((total, current) => total + current, 0) / a.length;
-}
-
-function max(a) {
-    return a.reduce(function(total, current) {
-        return Math.max(total, current);
-    });
-}
-
-function randomIntInRange(a, b) {
-    return Math.floor(Math.random() * (b - a + 1)) + a;
-}
-
-function isInOpenRange(a, b, t) {
-    return a < t && t < b //|| a > t && t > b;
-}
-
-function isInClosedRange(a, b, t) {
-    return a <= t && t <= b || a >= t && t >= b;
-}
+const maths = require('./maths.js');
 
 function Visualiser(canvasID, audioID, renderFunction) {
     this.initialiseCanvas(canvasID);
@@ -115,35 +62,56 @@ Visualiser.prototype.getAmplitude = function() {
     this.analyser.getByteTimeDomainData(data);
 
     // Calculate peak
-    const peak = max(data);
+    const peak = maths.max(data);
 
     // Scale amplitude to between 0 and 1
     const amplitude = (peak - 128) / 128;
     return amplitude;
 };
 
-Visualiser.prototype.getAmplitudeSmooth = function(factor) {
+Visualiser.prototype.getAmplitudeSmooth = function(factor = 0.15) {
     const amp = this.getAmplitude();
-    const smoothAmp = lerp(this._previousAmplitude, amp, factor);
-    this._previousAmplitude = smoothAmp;
-
+    const smoothAmp = this._smoothAmplitude(amp, factor);
     return smoothAmp;
+};
+
+Visualiser.prototype.getAmplitudeWeighted = function(weights) {
+    // Get amplitude of each frequency
+    const amps = this.getFrequenciesSmooth();
+
+    // Scale each frequency
+    const scaledAmps = amps.reduce((total, current, index) => total + current * weights[index], 1);
+
+    // Calculate peak
+    const peak = maths.max(scaledAmps);
+    return peak;
 };
 
 Visualiser.prototype.amplitudeIsAbove = function(value) {
     return this.getAmplitudeSmooth() > value;
 };
 
+Visualiser.prototype._smoothAmplitude = function(amp, factor = 0.15) {
+    const smoothAmp = maths.lerp(this._previousAmplitude, amp, factor);
+    this._previousAmplitude = smoothAmp;
+    return smoothAmp;
+};
+
+Visualiser.prototype.getFrequencies = function() {
+    var data = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteFrequencyData(data);
+
+    // Scale each amplitude to between 0 and 1
+    data = data.map((amp) => (amp - 128) / 128);
+    return data;
+};
+
+Visualiser.prototype.getFrequenciesSmooth = function(factor = 0.15) {
+    var data = this.getFrequencies();
+    data.map(x => this._smoothAmplitude(x, factor));
+    return data;
+};
+
 module.exports = {
-    Visualiser: Visualiser,
-    helpers: {
-        lerp: lerp,
-        quad: quad,
-        cubic: cubic,
-        polyInterpolate: polyInterpolate,
-        clip: clip,
-        randomIntInRange, randomIntInRange,
-        isInOpenRange, isInOpenRange,
-        isInClosedRange, isInClosedRange
-    }
+    Visualiser: Visualiser
 };
