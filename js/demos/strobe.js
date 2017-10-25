@@ -5,7 +5,7 @@ let frameCounter = 0;
 
 let lightIsOn = false;
 
-function strobe(v) {
+module.exports = function(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
@@ -34,5 +34,3 @@ function strobe(v) {
     // Advance frame counter
     frameCounter += 1;
 }
-
-module.exports = strobe;

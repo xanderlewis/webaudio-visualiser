@@ -60,15 +60,15 @@ function isInClosedRange(a, b, t) {
 }
 
 module.exports = {
-    max: max,
-    mean: mean,
-    euclideanDistance: euclideanDistance,
-    lerp: lerp,
-    quad: quad,
-    cubic: cubic,
-    polyInterpolate: polyInterpolate,
-    clip: clip,
-    randomIntInRange, randomIntInRange,
-    isInOpenRange, isInOpenRange,
-    isInClosedRange, isInClosedRange
+    max,
+    mean,
+    euclideanDistance,
+    lerp,
+    quad,
+    cubic,
+    polyInterpolate,
+    clip,
+    randomIntInRange,
+    isInOpenRange,
+    isInClosedRange
 };

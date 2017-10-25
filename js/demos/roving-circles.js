@@ -3,7 +3,7 @@ const ParticleSet = require('../src/particle.js').ParticleSet;
 
 let particleSet;
 
-function rovingCircles(v) {
+moudle.exports = function(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
@@ -55,5 +55,3 @@ function rovingCircles(v) {
     // Update particle set
     particleSet.tick(maths.polyInterpolate(0, 6, amp, 4));
 }
-
-module.exports = rovingCircles;

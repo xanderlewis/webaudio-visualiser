@@ -2,7 +2,7 @@ const maths = require('../src/maths.js');
 
 let squareCentres = [];
 
-function randomRainbowSquares(v) {
+module.exports = function(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
@@ -31,5 +31,3 @@ function randomRainbowSquares(v) {
         ctx.fillRect(originX, originY, actualSize, actualSize);
     });
 }
-
-module.exports = randomRainbowSquares;

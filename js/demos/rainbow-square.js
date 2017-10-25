@@ -1,6 +1,6 @@
 const lerp = require('../src/maths.js').lerp;
 
-function rainbowSquare(v) {
+module.exports = function(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
@@ -26,5 +26,3 @@ function rainbowSquare(v) {
 
     ctx.fillRect(originX, originY, actualSize, actualSize);
 };
-
-module.exports = rainbowSquare;

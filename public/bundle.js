@@ -2,70 +2,48 @@
 const maths = require('../src/maths.js');
 const ParticleSet = require('../src/particle.js').ParticleSet;
 
-let particleSet;
+const backgroundColour = '#f2f3f4';
 
-function web(v) {
+module.exports = function(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
 
-    // Get amplitude
-    const amp = v.getAmplitudeSmooth(0.15);
-
-    // Set up particle set
-    if (particleSet == undefined) {
-        // Set up particle set
-        particleSet = new ParticleSet(120, {
-            minX: 0,
-            maxX: canvasWidth,
-            minY: 0,
-            maxY: canvasHeight,
-            maxV: 4,
-            xEdgeBehaviour: 'bounce',
-            yEdgeBehaviour: 'bounce'
-        });
-    }
+    // Get each frequency's amplitude
+    const amps = v.getFrequencies(0.15);
 
     // Draw background
-    const hWidth = canvasWidth / 2;
-    const hHeight = canvasHeight / 2;
-    const innerColour = '#8b9d9e' //'#ff145c';
-    const outerColour = '#6e7f80' //'#9e0030';
-    var gradient = ctx.createRadialGradient(hWidth, hHeight, 0, hWidth, hHeight, hWidth);
-    gradient.addColorStop(0, innerColour);
-    gradient.addColorStop(1, outerColour);
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = backgroundColour;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    // Draw flash
-    ctx.fillStyle = `rgba(255,0,127,${maths.polyInterpolate(0, 1, amp, 4)})`;
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    // Calculate bars
+    const graphOriginX = 0;
+    const graphOriginY = 0;
+    const graphWidth = canvasWidth;
+    const graphHeight = canvasHeight;
+    const numberOfBars = v.numberOfFrequencyBands();
+    const barWidth = graphWidth / numberOfBars;
 
-    // Draw web
-    const p = particleSet.particles;
+    // Draw bars
     
-    for (var i = 1; i < p.length - 1; i++) {
-        ctx.beginPath();
-        ctx.moveTo(p[i].x, p[i].y);
-        ctx.lineTo(p[i+1].x, p[i+1].y);
-        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-        ctx.lineWidth = maths.euclideanDistance(p[i].vX, p[i].vY) / 3;
-        ctx.stroke();
+    for (var i = 0; i < numberOfBars; i++) {
+        // Calculate bar height
+        const barHeight = maths.lerp(0, graphHeight, amps[i]);
+
+        ctx.fillStyle = `hsla(${maths.lerp(0, 360, amps[i])}, 100%, 50%, 1)`;
+
+        // Draw single bar
+        ctx.fillRect(graphOriginX + barWidth * i, graphOriginY + (graphHeight - barHeight), barWidth, barHeight);
     }
-    
-
-    // Update particle set
-    particleSet.tick(maths.polyInterpolate(0, 20, amp, 6));
 }
 
-module.exports = web;
 },{"../src/maths.js":3,"../src/particle.js":4}],2:[function(require,module,exports){
 const Visualiser = require('./src/visualiser.js').Visualiser;
-const renderFunction = require('./demos/web.js');
+const renderFunction = require('./demos/frequency-bars.js');
 
 // Create a Visualiser instance that visualises the audio using the canvas
 const visualiser = new Visualiser('out', 'in', renderFunction);
-},{"./demos/web.js":1,"./src/visualiser.js":5}],3:[function(require,module,exports){
+},{"./demos/frequency-bars.js":1,"./src/visualiser.js":5}],3:[function(require,module,exports){
 // Some useful functions for doing visualisations
 
 function lerp(a, b, t) {
@@ -128,17 +106,17 @@ function isInClosedRange(a, b, t) {
 }
 
 module.exports = {
-    max: max,
-    mean: mean,
-    euclideanDistance: euclideanDistance,
-    lerp: lerp,
-    quad: quad,
-    cubic: cubic,
-    polyInterpolate: polyInterpolate,
-    clip: clip,
-    randomIntInRange, randomIntInRange,
-    isInOpenRange, isInOpenRange,
-    isInClosedRange, isInClosedRange
+    max,
+    mean,
+    euclideanDistance,
+    lerp,
+    quad,
+    cubic,
+    polyInterpolate,
+    clip,
+    randomIntInRange,
+    isInOpenRange,
+    isInClosedRange
 };
 },{}],4:[function(require,module,exports){
 const maths = require('./maths.js');
@@ -306,7 +284,7 @@ Visualiser.prototype.initialiseNodes = function() {
     // Create nodes
     const source = this.audioContext.createMediaElementSource(this.audioElement);
     this.analyser = this.audioContext.createAnalyser();
-    this.analyser.fftSize = 2048;
+    this.analyser.fftSize = 512; //2048;
     const destination = this.audioContext.destination;
 
     // Connect nodes
@@ -337,7 +315,7 @@ Visualiser.prototype.getAmplitudeWeighted = function(weights) {
     // Get amplitude of each frequency
     const amps = this.getFrequenciesSmooth();
 
-    // Scale each frequency
+    // Scale each frequency by the corresponding weight
     const scaledAmps = amps.reduce((total, current, index) => total + current * weights[index], 1);
 
     // Calculate peak
@@ -356,21 +334,23 @@ Visualiser.prototype._smoothAmplitude = function(amp, factor = 0.15) {
 };
 
 Visualiser.prototype.getFrequencies = function() {
-    var data = new Uint8Array(this.analyser.frequencyBinCount);
+    let data = new Uint8Array(this.analyser.frequencyBinCount);
     this.analyser.getByteFrequencyData(data);
 
     // Scale each amplitude to between 0 and 1
-    data = data.map((amp) => (amp - 128) / 128);
-    return data;
+    return Array.prototype.map.call(data, (amp) => amp / 255);
 };
 
 Visualiser.prototype.getFrequenciesSmooth = function(factor = 0.15) {
-    var data = this.getFrequencies();
-    data.map(x => this._smoothAmplitude(x, factor));
-    return data;
+    const data = this.getFrequencies();
+    return data.map(x => this._smoothAmplitude(x, factor));
+};
+
+Visualiser.prototype.numberOfFrequencyBands = function() {
+    return this.analyser.frequencyBinCount;
 };
 
 module.exports = {
-    Visualiser: Visualiser
+    Visualiser
 };
 },{"./maths.js":3}]},{},[2]);

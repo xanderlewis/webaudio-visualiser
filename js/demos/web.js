@@ -3,7 +3,7 @@ const ParticleSet = require('../src/particle.js').ParticleSet;
 
 let particleSet;
 
-function web(v) {
+module.exports = function(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
@@ -56,5 +56,3 @@ function web(v) {
     // Update particle set
     particleSet.tick(maths.polyInterpolate(0, 20, amp, 6));
 }
-
-module.exports = web;

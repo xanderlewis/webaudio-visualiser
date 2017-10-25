@@ -48,7 +48,7 @@ Visualiser.prototype.initialiseNodes = function() {
     // Create nodes
     const source = this.audioContext.createMediaElementSource(this.audioElement);
     this.analyser = this.audioContext.createAnalyser();
-    this.analyser.fftSize = 2048;
+    this.analyser.fftSize = 512; //2048;
     const destination = this.audioContext.destination;
 
     // Connect nodes
@@ -79,7 +79,7 @@ Visualiser.prototype.getAmplitudeWeighted = function(weights) {
     // Get amplitude of each frequency
     const amps = this.getFrequenciesSmooth();
 
-    // Scale each frequency
+    // Scale each frequency by the corresponding weight
     const scaledAmps = amps.reduce((total, current, index) => total + current * weights[index], 1);
 
     // Calculate peak
@@ -98,20 +98,22 @@ Visualiser.prototype._smoothAmplitude = function(amp, factor = 0.15) {
 };
 
 Visualiser.prototype.getFrequencies = function() {
-    var data = new Uint8Array(this.analyser.frequencyBinCount);
+    let data = new Uint8Array(this.analyser.frequencyBinCount);
     this.analyser.getByteFrequencyData(data);
 
     // Scale each amplitude to between 0 and 1
-    data = data.map((amp) => (amp - 128) / 128);
-    return data;
+    return Array.prototype.map.call(data, (amp) => amp / 255);
 };
 
 Visualiser.prototype.getFrequenciesSmooth = function(factor = 0.15) {
-    var data = this.getFrequencies();
-    data.map(x => this._smoothAmplitude(x, factor));
-    return data;
+    const data = this.getFrequencies();
+    return data.map(x => this._smoothAmplitude(x, factor));
+};
+
+Visualiser.prototype.numberOfFrequencyBands = function() {
+    return this.analyser.frequencyBinCount;
 };
 
 module.exports = {
-    Visualiser: Visualiser
+    Visualiser
 };
