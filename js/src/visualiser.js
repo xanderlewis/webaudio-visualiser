@@ -6,7 +6,7 @@ function Visualiser(canvasID, audioID, renderFunction) {
     this.initialiseNodes();
 
     // Private properties
-    this._previousAmplitude = 0;
+    this._previousAmplitude = 0.5;
 
     // Get references to visualiser instance and render function
     const v = this;
@@ -47,13 +47,20 @@ Visualiser.prototype.initialiseAudio = function(id) {
 Visualiser.prototype.initialiseNodes = function() {
     // Create nodes
     const source = this.audioContext.createMediaElementSource(this.audioElement);
+
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 2048; // (default fft size)
+
+    this.filter = this.audioContext.createBiquadFilter();
+    this.filter.type = 'allpass';
+    this.filter.gain.value = 0;
+
     const destination = this.audioContext.destination;
 
     // Connect nodes
     source.connect(this.analyser);
-    this.analyser.connect(destination);
+    this.analyser.connect(this.filter);
+    this.filter.connect(destination);
 };
 
 Visualiser.prototype.setFFTSize = function(size) {
@@ -77,18 +84,6 @@ Visualiser.prototype.getAmplitudeSmooth = function(factor = 0.15) {
     const amp = this.getAmplitude();
     const smoothAmp = this._smoothAmplitude(amp, factor);
     return smoothAmp;
-};
-
-Visualiser.prototype.getAmplitudeWeighted = function(weights) {
-    // Get amplitude of each frequency
-    const amps = this.getFrequenciesSmooth();
-
-    // Scale each frequency by the corresponding weight
-    const scaledAmps = amps.reduce((total, current, index) => total + current * weights[index], 1);
-
-    // Calculate peak
-    const peak = maths.max(scaledAmps);
-    return peak;
 };
 
 Visualiser.prototype.amplitudeIsAbove = function(value) {
@@ -122,6 +117,27 @@ Visualiser.prototype.getFrequenciesSmooth = function(factor = 0.15) {
 
 Visualiser.prototype.numberOfFrequencyBands = function() {
     return this.analyser.frequencyBinCount;
+};
+
+/**
+ * TODO: Fix the weightFrequencies* stuff so that the sound the user hears is not affected by the filter.
+ * Only the analyser's input should be filtered.
+ * 
+ */ 
+Visualiser.prototype.weightFrequenciesBelow = function(frequency, weight) {
+    this.filter.type = 'lowshelf';
+    this.filter.frequency.value = frequency;
+    this.filter.gain.value = weight;
+};
+
+Visualiser.prototype.weightFrequenciesAbove = function(frequency, weight) {
+    this.filter.type = 'highshelf';
+    this.filter.frequency.value = frequency;
+    this.filter.gain.value = weight;
+};
+
+Visualiser.prototype.resetFrequencyWeight = function() {
+    this.filter.gain.value = 0;
 };
 
 module.exports = {

@@ -2,49 +2,68 @@
 const maths = require('../src/maths.js');
 const ParticleSet = require('../src/particle.js').ParticleSet;
 
-const backgroundColour = '#f2f3f4';
+let particleSet;
 
 module.exports = function(v) {
     const ctx = v.renderingContext;
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
 
-    // Get each frequency's amplitude
-    v.setFFTSize(512);
-    const amps = v.getFrequencies(0.15);
+    // Get amplitude
+    const amp = v.getAmplitudeSmooth(0.15);
+
+    // Set up particle set
+    if (particleSet == undefined) {
+        // Set up particle set
+        particleSet = new ParticleSet(120, {
+            minX: 0,
+            maxX: canvasWidth,
+            minY: 0,
+            maxY: canvasHeight,
+            maxV: 4,
+            xEdgeBehaviour: 'bounce',
+            yEdgeBehaviour: 'bounce'
+        });
+    }
 
     // Draw background
-    ctx.fillStyle = backgroundColour;
+    const hWidth = canvasWidth / 2;
+    const hHeight = canvasHeight / 2;
+    const innerColour = '#8b9d9e' //'#ff145c';
+    const outerColour = '#6e7f80' //'#9e0030';
+    var gradient = ctx.createRadialGradient(hWidth, hHeight, 0, hWidth, hHeight, hWidth);
+    gradient.addColorStop(0, innerColour);
+    gradient.addColorStop(1, outerColour);
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    // Calculate bars
-    const graphOriginX = 0;
-    const graphOriginY = 0;
-    const graphWidth = canvasWidth;
-    const graphHeight = canvasHeight;
-    const numberOfBars = v.numberOfFrequencyBands();
-    const barWidth = graphWidth / numberOfBars;
+    // Draw flash
+    ctx.fillStyle = `rgba(255,0,127,${maths.polyInterpolate(0, 1, amp, 3)})`;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    // Draw bars
+    // Draw web
+    const p = particleSet.particles;
     
-    for (var i = 0; i < numberOfBars; i++) {
-        // Calculate bar height
-        const barHeight = maths.lerp(0, graphHeight, amps[i]);
-
-        ctx.fillStyle = `hsla(${maths.lerp(0, 360, amps[i])}, 100%, 50%, 1)`;
-
-        // Draw single bar
-        ctx.fillRect(graphOriginX + barWidth * i, graphOriginY + (graphHeight - barHeight), barWidth, barHeight);
+    for (var i = 1; i < p.length - 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(p[i].x, p[i].y);
+        ctx.lineTo(p[i+1].x, p[i+1].y);
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = maths.euclideanDistance(p[i].vX, p[i].vY) / 4;
+        ctx.stroke();
     }
-}
+    
 
+    // Update particle set
+    particleSet.tick(maths.polyInterpolate(0, 20, amp, 3));
+}
 },{"../src/maths.js":3,"../src/particle.js":4}],2:[function(require,module,exports){
 const Visualiser = require('./src/visualiser.js').Visualiser;
-const renderFunction = require('./demos/frequency-bars.js');
+const renderFunction = require('./demos/web.js');
 
 // Create a Visualiser instance that visualises the audio using the canvas
 const visualiser = new Visualiser('out', 'in', renderFunction);
-},{"./demos/frequency-bars.js":1,"./src/visualiser.js":5}],3:[function(require,module,exports){
+},{"./demos/web.js":1,"./src/visualiser.js":5}],3:[function(require,module,exports){
 // Some useful functions for doing visualisations
 
 function lerp(a, b, t) {
@@ -243,7 +262,7 @@ function Visualiser(canvasID, audioID, renderFunction) {
     this.initialiseNodes();
 
     // Private properties
-    this._previousAmplitude = 0;
+    this._previousAmplitude = 0.5;
 
     // Get references to visualiser instance and render function
     const v = this;
@@ -284,13 +303,20 @@ Visualiser.prototype.initialiseAudio = function(id) {
 Visualiser.prototype.initialiseNodes = function() {
     // Create nodes
     const source = this.audioContext.createMediaElementSource(this.audioElement);
+
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 2048; // (default fft size)
+
+    this.filter = this.audioContext.createBiquadFilter();
+    this.filter.type = 'allpass';
+    this.filter.gain.value = 0;
+
     const destination = this.audioContext.destination;
 
     // Connect nodes
     source.connect(this.analyser);
-    this.analyser.connect(destination);
+    this.analyser.connect(this.filter);
+    this.filter.connect(destination);
 };
 
 Visualiser.prototype.setFFTSize = function(size) {
@@ -314,18 +340,6 @@ Visualiser.prototype.getAmplitudeSmooth = function(factor = 0.15) {
     const amp = this.getAmplitude();
     const smoothAmp = this._smoothAmplitude(amp, factor);
     return smoothAmp;
-};
-
-Visualiser.prototype.getAmplitudeWeighted = function(weights) {
-    // Get amplitude of each frequency
-    const amps = this.getFrequenciesSmooth();
-
-    // Scale each frequency by the corresponding weight
-    const scaledAmps = amps.reduce((total, current, index) => total + current * weights[index], 1);
-
-    // Calculate peak
-    const peak = maths.max(scaledAmps);
-    return peak;
 };
 
 Visualiser.prototype.amplitudeIsAbove = function(value) {
@@ -359,6 +373,27 @@ Visualiser.prototype.getFrequenciesSmooth = function(factor = 0.15) {
 
 Visualiser.prototype.numberOfFrequencyBands = function() {
     return this.analyser.frequencyBinCount;
+};
+
+/**
+ * TODO: Fix the weightFrequencies* stuff so that the sound the user hears is not affected by the filter.
+ * Only the analyser's input should be filtered.
+ * 
+ */ 
+Visualiser.prototype.weightFrequenciesBelow = function(frequency, weight) {
+    this.filter.type = 'lowshelf';
+    this.filter.frequency.value = frequency;
+    this.filter.gain.value = weight;
+};
+
+Visualiser.prototype.weightFrequenciesAbove = function(frequency, weight) {
+    this.filter.type = 'highshelf';
+    this.filter.frequency.value = frequency;
+    this.filter.gain.value = weight;
+};
+
+Visualiser.prototype.resetFrequencyWeight = function() {
+    this.filter.gain.value = 0;
 };
 
 module.exports = {

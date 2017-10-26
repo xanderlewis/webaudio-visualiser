@@ -37,7 +37,7 @@ module.exports = function(v) {
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw flash
-    ctx.fillStyle = `rgba(255,0,127,${maths.polyInterpolate(0, 1, amp, 4)})`;
+    ctx.fillStyle = `rgba(255,0,127,${maths.polyInterpolate(0, 1, amp, 3)})`;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw web
@@ -54,5 +54,5 @@ module.exports = function(v) {
     
 
     // Update particle set
-    particleSet.tick(maths.polyInterpolate(0, 20, amp, 6));
+    particleSet.tick(maths.polyInterpolate(0, 20, amp, 3));
 }
